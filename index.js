@@ -26,8 +26,15 @@ app.post('/scan', upload.array('photos', 5), async (req, res) => {
       return res.status(400).json({ error: 'No photos uploaded' })
     }
 
-    const accountId = process.env.CLOUDFLARE_ACCOUNT_ID
-    const token = process.env.CLOUDFLARE_TOKEN
+    // Compress image
+    const compressed = await sharp(files[0].buffer)
+      .resize({ width: 512, height: 512, fit: 'inside' })
+      .jpeg({ quality: 80 })
+      .toBuffer()
+
+    console.log('Original:', files[0].buffer.length, 'Compressed:', compressed.length)
+
+    const base64Image = compressed.toString('base64')
 
     const prompt = `Look at this image carefully. Count every visible ${itemType} you can see.
 
@@ -36,40 +43,38 @@ Use this exact structure but fill in YOUR OWN counts based on what you actually 
 
 {"success":true,"total":ACTUAL_COUNT,"breakdown":[{"photo":1,"count":ACTUAL_COUNT,"notes":"describe what you see"}],"confidence":CONFIDENCE_0_TO_100,"item_type":"${itemType}","suggestions":"any tips for better photo","error":""}`
 
-    // Compress aggressively
-    const compressed = await sharp(files[0].buffer)
-      .resize({ width: 384, height: 384, fit: 'inside' })
-      .jpeg({ quality: 60 })
-      .toBuffer()
-
-    console.log('Original:', files[0].buffer.length, 'Compressed:', compressed.length)
-
-    // Send as array of integers
-    const imageArray = [...new Uint8Array(compressed)]
-
     const response = await fetch(
-      `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/@cf/llava-hf/llava-1.5-7b-hf`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          image: imageArray,
-          prompt: prompt,
-          max_tokens: 256
+          contents: [{
+            parts: [
+              {
+                inline_data: {
+                  mime_type: 'image/jpeg',
+                  data: base64Image
+                }
+              },
+              { text: prompt }
+            ]
+          }],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 512
+          }
         })
       }
     )
 
     const data = await response.json()
-    console.log('Cloudflare response:', JSON.stringify(data))
+    console.log('Gemini response:', JSON.stringify(data))
 
-    const text = data?.result?.description || ''
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
 
     if (!text) {
-      throw new Error('AI returned empty — ' + JSON.stringify(data))
+      throw new Error('Gemini returned empty — ' + JSON.stringify(data))
     }
 
     const clean = text
