@@ -1,6 +1,7 @@
 const express = require('express')
 const cors = require('cors')
 const multer = require('multer')
+const sharp = require('sharp')
 require('dotenv').config()
 
 const app = express()
@@ -25,15 +26,20 @@ app.post('/scan', upload.array('photos', 5), async (req, res) => {
     const accountId = process.env.CLOUDFLARE_ACCOUNT_ID
     const token = process.env.CLOUDFLARE_TOKEN
 
-const prompt = `Look at this image carefully. Count every visible ${itemType} you can see.
+    const prompt = `Look at this image carefully. Count every visible ${itemType} you can see.
 
 You MUST respond with ONLY a JSON object. No explanation. No markdown. No extra text. Just raw JSON.
 Use this exact structure but fill in YOUR OWN counts based on what you actually see:
 
 {"success":true,"total":ACTUAL_COUNT,"breakdown":[{"photo":1,"count":ACTUAL_COUNT,"notes":"describe what you see"}],"confidence":CONFIDENCE_0_TO_100,"item_type":"${itemType}","suggestions":"any tips for better photo","error":""}`
 
-    // Convert image to array of integers — exact Cloudflare format
-    const imageArray = [...new Uint8Array(files[0].buffer)]
+    // Compress image before sending to Cloudflare
+    const compressed = await sharp(files[0].buffer)
+      .resize({ width: 512, height: 512, fit: 'inside' })
+      .jpeg({ quality: 70 })
+      .toBuffer()
+
+    const imageArray = [...new Uint8Array(compressed)]
 
     const response = await fetch(
       `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/@cf/llava-hf/llava-1.5-7b-hf`,
@@ -61,15 +67,14 @@ Use this exact structure but fill in YOUR OWN counts based on what you actually 
     }
 
     const clean = text
-  .replace(/```json|```/g, '')
-  .replace(/\\_/g, '_')
-  .trim()
+      .replace(/```json|```/g, '')
+      .replace(/\\_/g, '_')
+      .trim()
 
     let result
     try {
       result = JSON.parse(clean)
     } catch {
-      // AI responded but not in JSON — still useful!
       result = {
         success: true,
         total: 0,
