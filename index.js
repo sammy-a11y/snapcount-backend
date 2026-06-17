@@ -34,10 +34,12 @@ Use this exact structure but fill in YOUR OWN counts based on what you actually 
 {"success":true,"total":ACTUAL_COUNT,"breakdown":[{"photo":1,"count":ACTUAL_COUNT,"notes":"describe what you see"}],"confidence":CONFIDENCE_0_TO_100,"item_type":"${itemType}","suggestions":"any tips for better photo","error":""}`
 
     // Compress image before sending to Cloudflare
-    const compressed = await sharp(files[0].buffer)
-      .resize({ width: 512, height: 512, fit: 'inside' })
-      .jpeg({ quality: 70 })
-      .toBuffer()
+const compressed = await sharp(files[0].buffer)
+  .resize({ width: 256, height: 256, fit: 'inside' })
+  .jpeg({ quality: 50 })
+  .toBuffer()
+
+console.log('Original size:', files[0].buffer.length, 'Compressed size:', compressed.length)
 
     const imageArray = [...new Uint8Array(compressed)]
 
