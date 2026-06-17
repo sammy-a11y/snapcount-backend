@@ -5,7 +5,10 @@ const sharp = require('sharp')
 require('dotenv').config()
 
 const app = express()
-const upload = multer({ storage: multer.memoryStorage() })
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }
+})
 
 app.use(cors())
 app.use(express.json())
@@ -33,14 +36,15 @@ Use this exact structure but fill in YOUR OWN counts based on what you actually 
 
 {"success":true,"total":ACTUAL_COUNT,"breakdown":[{"photo":1,"count":ACTUAL_COUNT,"notes":"describe what you see"}],"confidence":CONFIDENCE_0_TO_100,"item_type":"${itemType}","suggestions":"any tips for better photo","error":""}`
 
-    // Compress image before sending to Cloudflare
-const compressed = await sharp(files[0].buffer)
-  .resize({ width: 256, height: 256, fit: 'inside' })
-  .jpeg({ quality: 50 })
-  .toBuffer()
+    // Compress aggressively
+    const compressed = await sharp(files[0].buffer)
+      .resize({ width: 200, height: 200, fit: 'inside' })
+      .jpeg({ quality: 40 })
+      .toBuffer()
 
-console.log('Original size:', files[0].buffer.length, 'Compressed size:', compressed.length)
+    console.log('Original:', files[0].buffer.length, 'Compressed:', compressed.length)
 
+    // Send as array of integers
     const imageArray = [...new Uint8Array(compressed)]
 
     const response = await fetch(
@@ -54,7 +58,7 @@ console.log('Original size:', files[0].buffer.length, 'Compressed size:', compre
         body: JSON.stringify({
           image: imageArray,
           prompt: prompt,
-          max_tokens: 512
+          max_tokens: 256
         })
       }
     )
