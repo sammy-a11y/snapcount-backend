@@ -44,7 +44,7 @@ Use this exact structure but fill in YOUR OWN counts based on what you actually 
 {"success":true,"total":ACTUAL_COUNT,"breakdown":[{"photo":1,"count":ACTUAL_COUNT,"notes":"describe what you see"}],"confidence":CONFIDENCE_0_TO_100,"item_type":"${itemType}","suggestions":"any tips for better photo","error":""}`
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
