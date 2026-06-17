@@ -38,8 +38,8 @@ Use this exact structure but fill in YOUR OWN counts based on what you actually 
 
     // Compress aggressively
     const compressed = await sharp(files[0].buffer)
-      .resize({ width: 200, height: 200, fit: 'inside' })
-      .jpeg({ quality: 40 })
+      .resize({ width: 384, height: 384, fit: 'inside' })
+      .jpeg({ quality: 60 })
       .toBuffer()
 
     console.log('Original:', files[0].buffer.length, 'Compressed:', compressed.length)
